@@ -442,11 +442,13 @@ func (q *NavMeshQuery) FindStraightPath(
 	// TODO: Should this be callers responsibility?
 	closestStartPos := d3.NewVec3()
 	if StatusFailed(q.ClosestPointOnPolyBoundary(path[0], startPos, closestStartPos)) {
+		fmt.Println("Start point failed")
 		return 0, Failure | InvalidParam
 	}
 
 	closestEndPos := d3.NewVec3()
 	if StatusFailed(q.ClosestPointOnPolyBoundary(path[len(path)-1], endPos, closestEndPos)) {
+		fmt.Println(path[0], "End point failed", path[len(path)-1])
 		return 0, Failure | InvalidParam
 	}
 
@@ -488,6 +490,7 @@ func (q *NavMeshQuery) FindStraightPath(
 					// Clamp the end point to path[i], and return the path so far.
 					if StatusFailed(q.ClosestPointOnPolyBoundary(path[i], endPos, closestEndPos)) {
 						// This should only happen when the first polygon is invalid.
+						fmt.Println("First polygon is invalid.")
 						return 0, Failure | InvalidParam
 					}
 

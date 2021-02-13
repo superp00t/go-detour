@@ -202,3 +202,38 @@ func closestHeightPointTriangle(p, a, b, c d3.Vec3, h *float32) bool {
 func oppositeTile(side int32) int32 {
 	return (side + 4) & 0x7
 }
+
+func nextPow2(v uint32) uint32 {
+	v--
+	v |= v >> 1
+	v |= v >> 2
+	v |= v >> 4
+	v |= v >> 8
+	v |= v >> 16
+	v++
+	return v
+}
+
+func ibool(set bool) uint32 {
+	if set {
+		return 1
+	}
+	return 0
+}
+
+func ilog2(v uint32) uint32 {
+	var r, shift uint32
+	r = ibool(v > 0xffff) << 4
+	v >>= r
+	shift = ibool(v > 0xff) << 3
+	v >>= shift
+	r |= shift
+	shift = ibool(v > 0xf) << 2
+	v >>= shift
+	r |= shift
+	shift = ibool(v > 0x3) << 1
+	v >>= shift
+	r |= shift
+	r |= (v >> 1)
+	return r
+}

@@ -14,4 +14,8 @@ const (
 
 	// The maximum number of user defined area ids.
 	maxAreas int32 = 64
+
+	saltBits uint32 = 16
+	tileBits uint32 = 28
+	polyBits uint32 = 20
 )

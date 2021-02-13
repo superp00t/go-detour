@@ -57,9 +57,9 @@ type NavMesh struct {
 	posLookup             []*MeshTile   // Tile hash lookup.
 	nextFree              *MeshTile     // Freelist of tiles.
 	Tiles                 []MeshTile    // List of tiles.
-	saltBits              uint32        // Number of salt bits in the tile ID.
-	tileBits              uint32        // Number of tile bits in the tile ID.
-	polyBits              uint32        // Number of poly bits in the tile ID.
+	// saltBits              uint32        // Number of salt bits in the tile ID.
+	// tileBits              uint32        // Number of tile bits in the tile ID.
+	// polyBits              uint32        // Number of poly bits in the tile ID.
 }
 
 // Decode reads a tiled navigation mesh from r and returns it.
@@ -241,18 +241,19 @@ func (m *NavMesh) Init(params *NavMeshParams) Status {
 	}
 
 	// Init ID generator values.
-	m.tileBits = math32.Ilog2(math32.NextPow2(uint32(params.MaxTiles)))
-	m.polyBits = math32.Ilog2(math32.NextPow2(uint32(params.MaxPolys)))
-	// Only allow 31 salt bits, since the salt mask is calculated using 32bit uint and it will overflow.
-	if 31 < 32-m.tileBits-m.polyBits {
-		m.saltBits = 31
-	} else {
-		m.saltBits = 32 - m.tileBits - m.polyBits
-	}
+	// m.tileBits = math32.Ilog2(math32.NextPow2(uint32(params.MaxTiles)))
+	// m.polyBits = math32.Ilog2(math32.NextPow2(uint32(params.MaxPolys)))
 
-	if m.saltBits < 10 {
-		return Status(Failure | InvalidParam)
-	}
+	// // Only allow 31 salt bits, since the salt mask is calculated using 32bit uint and it will overflow.
+	// if 31 < 32-m.tileBits-m.polyBits {
+	// 	m.saltBits = 31
+	// } else {
+	// 	m.saltBits = 32 - m.tileBits - m.polyBits
+	// }
+
+	// if m.saltBits < 10 {
+	// 	return Status(Failure | InvalidParam)
+	// }
 
 	return Success
 }
@@ -499,7 +500,7 @@ func (m *NavMesh) RemoveTile(ref TileRef) (data []uint8, st Status) {
 	tile.OffMeshCons = nil
 
 	// Update salt, salt should never be zero.
-	tile.Salt = (tile.Salt + 1) & ((1 << m.saltBits) - 1)
+	tile.Salt = (tile.Salt + 1) & ((1 << saltBits) - 1)
 	if tile.Salt == 0 {
 		tile.Salt++
 	}
@@ -632,12 +633,14 @@ func freeLink(tile *MeshTile, link uint32) {
 //   it       The index of the tile.
 //   ip       The index of the polygon within the tile.
 func (m *NavMesh) encodePolyID(salt, it, ip uint32) PolyRef {
-	return (PolyRef(salt) << (m.polyBits + m.tileBits)) |
-		(PolyRef(it) << m.polyBits) | PolyRef(ip)
+	// return (PolyRef(salt) << (m.polyBits + m.tileBits)) |
+	// 	(PolyRef(it) << m.polyBits) | PolyRef(ip)
+	// return ((dtPolyRef)salt << (DT_POLY_BITS+DT_TILE_BITS)) | ((dtPolyRef)it << DT_POLY_BITS) | (dtPolyRef)ip;
+	return (PolyRef(salt))<<(polyBits+tileBits) | (PolyRef(it) << polyBits) | PolyRef(ip)
 }
 
 // PolyRef is a polygon reference.
-type PolyRef uint32
+type PolyRef uint64
 
 // Link defines a Link between polygons.
 //
@@ -658,6 +661,7 @@ type PolyDetail struct {
 	TriBase   uint32 // The offset of the triangles in the MeshTile.DetailTris slice.
 	VertCount uint8  // The number of vertices in the sub-mesh.
 	TriCount  uint8  // The number of triangles in the sub-mesh.
+	Padding   uint16
 }
 
 // A BvNode is a bounding volume node.
@@ -737,16 +741,16 @@ const (
 //
 //  see encodePolyID
 func (m *NavMesh) decodePolyIDTile(ref PolyRef) uint32 {
-	tileMask := PolyRef((PolyRef(1) << m.tileBits) - 1)
-	return uint32((ref >> m.polyBits) & tileMask)
+	tileMask := PolyRef((PolyRef(1) << tileBits) - 1)
+	return uint32((ref >> polyBits) & tileMask)
 }
 
 // Extracts a tile's salt value from the specified polygon reference.
 //
 //  see encodePolyID
 func (m *NavMesh) decodePolyIDSalt(ref PolyRef) uint32 {
-	saltMask := (PolyRef(1) << m.saltBits) - 1
-	return uint32((ref >> (m.polyBits + m.tileBits)) & saltMask)
+	saltMask := (PolyRef(1) << saltBits) - 1
+	return uint32((ref >> (polyBits + tileBits)) & saltMask)
 }
 
 // Builds internal polygons links for a tile.
@@ -971,7 +975,7 @@ func (m *NavMesh) queryPolygonsInTile(
 //
 //  See encodePolyID
 func (m *NavMesh) decodePolyIDPoly(ref PolyRef) uint32 {
-	polyMask := PolyRef((1 << m.polyBits) - 1)
+	polyMask := PolyRef((1 << polyBits) - 1)
 	return uint32(ref & polyMask)
 }
 
@@ -1099,12 +1103,12 @@ func (m *NavMesh) TileAndPolyByRefUnsafe(ref PolyRef, tile **MeshTile, poly **Po
 // see encodePolyID
 // TODO: Use Go-idioms: change signature and returns salt, it and ip
 func (m *NavMesh) DecodePolyID(ref PolyRef, salt, it, ip *uint32) {
-	saltMask := (PolyRef(1) << m.saltBits) - 1
-	tileMask := (PolyRef(1) << m.tileBits) - 1
-	polyMask := (PolyRef(1) << m.polyBits) - 1
+	saltMask := (PolyRef(1) << saltBits) - 1
+	tileMask := (PolyRef(1) << tileBits) - 1
+	polyMask := (PolyRef(1) << polyBits) - 1
 
-	*salt = uint32((ref >> (m.polyBits + m.tileBits)) & saltMask)
-	*it = uint32((ref >> m.polyBits) & tileMask)
+	*salt = uint32((ref >> (polyBits + tileBits)) & saltMask)
+	*it = uint32((ref >> polyBits) & tileMask)
 	*ip = uint32(ref & polyMask)
 }
 

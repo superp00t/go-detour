@@ -9,13 +9,22 @@ import (
 	"github.com/arl/math32"
 )
 
+// From Thomas Wang, https://gist.github.com/badboy/6267743
 func hashRef(a PolyRef) uint32 {
-	a += ^(a << 15)
-	a ^= (a >> 10)
-	a += (a << 3)
-	a ^= (a >> 6)
-	a += ^(a << 11)
-	a ^= (a >> 16)
+	// a += ^(a << 15)
+	// a ^= (a >> 10)
+	// a += (a << 3)
+	// a ^= (a >> 6)
+	// a += ^(a << 11)
+	// a ^= (a >> 16)
+	// return uint32(a)
+
+	a = (^a) + (a << 18) // a = (a << 18) - a - 1;
+	a = a ^ (a >> 31)
+	a = a * 21 // a = (a + (a << 2)) + (a << 4);
+	a = a ^ (a >> 11)
+	a = a + (a << 6)
+	a = a ^ (a >> 22)
 	return uint32(a)
 }
 
